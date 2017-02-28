@@ -5,38 +5,55 @@
 <head>
     <meta charset="utf-8">
     <title>Log in</title>
+
+    <!-- jQuery -->
+    <script src="webjars/jquery/jquery.min.js"></script>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="webjars/bootstrap/css/bootstrap.min.css">
+    <script src="webjars/bootstrap/js/bootstrap.min.js"></script>
 </head>
 <body>
-<nav role="navigation">
-    <ul>
-        <li><a href="/">Home</a></li>
-    </ul>
+<!-- As a link -->
+<nav class="navbar navbar-light" style="background-color: #e3f2fd;">
+    <a class="navbar-brand" href="/">Home</a>
 </nav>
 
-<h1>Log in</h1>
-
-<p>You can use: demo@localhost / demo</p>
-
-<form role="form" action="/login" method="post">
-    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
-
-    <div>
-        <label for="email">Email address</label>
-        <input type="email" name="email" id="email" required autofocus/>
-    </div>
-    <div>
-        <label for="password">Password</label>
-        <input type="password" name="password" id="password" required/>
-    </div>
-    <div>
-        <label for="remember-me">Remember me</label>
-        <input type="checkbox" name="remember-me" id="remember-me"/>
-    </div>
-    <button type="submit">Sign in</button>
-</form>
-
 <#if error.isPresent()>
-<p>The email or password you have entered is invalid, try again.</p>
+<div class="alert alert-warning" role="alert">
+    <p>The email or password you have entered is invalid, try again.</p>
+</div>
 </#if>
+
+<div class="container" style="margin-top:40px;">
+    <div class="row">
+
+        <div class="card card-outline-info">
+            <form class="form-signin" action="/login" method="post">
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+
+                <div class="card-block">
+                    <h1 class="card-title">Log in</h1>
+
+                    <p class="card-subtitle mb-2 text-muted">You can use: demo@localhost / demo</p>
+
+                    <label for="inputEmail" class="sr-only">Email address</label>
+                    <input type="email" id="inputEmail" name="email" class="form-control" placeholder="Email address" required autofocus>
+                    <label for="inputPassword" class="sr-only">Password</label>
+                    <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required>
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" value="remember-me" name="remember-me"> Remember me
+                        </label>
+                    </div>
+                    <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div> <!-- /container -->
+
 </body>
 </html>

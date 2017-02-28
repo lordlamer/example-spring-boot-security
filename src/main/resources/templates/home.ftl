@@ -5,25 +5,32 @@
 <head>
     <meta charset="utf-8">
     <title>Home page</title>
+    <!-- jQuery -->
+    <script src="webjars/jquery/jquery.min.js"></script>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="webjars/bootstrap/css/bootstrap.min.css">
+    <script src="webjars/bootstrap/js/bootstrap.min.js"></script>
 </head>
 <body>
-<nav role="navigation">
-    <ul>
+<nav class="navbar navbar-light" style="background-color: #e3f2fd;">
+    <a class="navbar-brand" href="/">Home</a>
+    <ul class="navbar-nav">
     <#if !currentUser??>
-        <li><a href="/login">Log in</a></li>
+        <li class="nav-item"><a class="nav-link" href="/login">Log in</a></li>
     </#if>
     <#if currentUser??>
-        <li>
+        <li class="nav-item">
             <form action="/logout" method="post">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
                 <button type="submit">Log out</button>
             </form>
         </li>
-        <li><a href="/user/${currentUser.id}">View myself</a></li>
+        <li class="nav-item"><a class="nav-link" href="/user/${currentUser.id}">View myself</a></li>
     </#if>
     <#if currentUser?? && currentUser.role == "ADMIN">
-        <li><a href="/user/create">Create a new user</a></li>
-        <li><a href="/users">View all users</a></li>
+        <li class="nav-item"><a class="nav-link" href="/user/create">Create a new user</a></li>
+        <li class="nav-item"><a class="nav-link" href="/users">View all users</a></li>
     </#if>
     </ul>
 </nav>

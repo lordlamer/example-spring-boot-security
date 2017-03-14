@@ -3,14 +3,13 @@ package com.example.security;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Component;
 
 import java.io.Serializable;
 
 /**
  * Created by fhabermann on 22.02.2017.
  */
-@Component("permissionEvaluator")
+//@Component("permissionEvaluator")
 public class PermissionEvaluator implements org.springframework.security.access.PermissionEvaluator {
     private static final Logger logger = LoggerFactory.getLogger(PermissionEvaluator.class);
 

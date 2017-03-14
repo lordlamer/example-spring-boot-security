@@ -57,7 +57,6 @@ public class JdbcAclService implements AclInterface {
             return false;
         }
 
-
         return true;
     }
 

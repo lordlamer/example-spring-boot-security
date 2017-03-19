@@ -58,19 +58,7 @@ public interface AclInterface {
      *
      * @return
      */
-    List<RoleInterface> getRoles();
-
-    /**
-     * remove all roles
-     */
-    void removeRoles();
-
-    /**
-     * remove all roles and all acl entries
-     *
-     * @param removeAcl
-     */
-    void removeRoles(boolean removeAcl);
+    List<RoleInterface> getRoles() throws AclException;
 
     //
     //	RESOURCE HANDLING
@@ -89,14 +77,14 @@ public interface AclInterface {
      *
      * @param resource
      */
-    void addResource(RoleInterface resource);
+    void addResource(ResourceInterface resource) throws AclException;
 
     /**
      * remove resource
      *
      * @param resource
      */
-    void removeResource(RoleInterface resource);
+    void removeResource(ResourceInterface resource) throws AclException;
 
     /**
      * remove resource and all acl entries
@@ -104,26 +92,14 @@ public interface AclInterface {
      * @param resource
      * @param removeAcl
      */
-    void removeResource(RoleInterface resource, boolean removeAcl);
+    void removeResource(ResourceInterface resource, boolean removeAcl) throws AclException;
 
     /**
      * get all resources
      *
      * @return
      */
-    List<RoleInterface> getResources();
-
-    /**
-     * remove all resources
-     */
-    void removeResources();
-
-    /**
-     * remove all resources and all acl entries
-     *
-     * @param removeAcl
-     */
-    void removeResources(boolean removeAcl);
+    List<ResourceInterface> getResources() throws AclException;
 
     //
     //	PERMISSIONS
@@ -134,14 +110,14 @@ public interface AclInterface {
      *
      * @param role
      */
-    void clearByRole(RoleInterface role);
+    void clearByRole(RoleInterface role) throws AclException;
 
     /**
      * clear acl entries by resource
      *
      * @param resource
      */
-    void clearByResource(RoleInterface resource);
+    void clearByResource(ResourceInterface resource) throws AclException;
 
     /**
      * create allow acl entry
@@ -150,7 +126,7 @@ public interface AclInterface {
      * @param resource
      * @param action
      */
-    void allow(RoleInterface role, RoleInterface resource, String action);
+    void allow(RoleInterface role, ResourceInterface resource, String action) throws AclException;
 
     /**
      * create deny acl entry
@@ -159,7 +135,7 @@ public interface AclInterface {
      * @param resource
      * @param action
      */
-    void deny(RoleInterface role, RoleInterface resource, String action);
+    void deny(RoleInterface role, ResourceInterface resource, String action) throws AclException;
 
     /**
      * remove acl entry
@@ -168,7 +144,7 @@ public interface AclInterface {
      * @param resource
      * @param action
      */
-    void remove(RoleInterface role, RoleInterface resource, String action);
+    void remove(RoleInterface role, ResourceInterface resource, String action) throws AclException;
 
     /**
      * check if acl entry exists
@@ -178,7 +154,7 @@ public interface AclInterface {
      * @param action
      * @return
      */
-    boolean hasRule(RoleInterface role, RoleInterface resource, String action);
+    boolean hasRule(RoleInterface role, ResourceInterface resource, String action);
 
     /**
      * check if role is allowed to access resource with given action
@@ -188,7 +164,7 @@ public interface AclInterface {
      * @param action
      * @return
      */
-    boolean isAllowed(RoleInterface role, RoleInterface resource, String action);
+    boolean isAllowed(RoleInterface role, ResourceInterface resource, String action) throws AclException;
 
     /**
      * check if role is allowed to access resource with given action
@@ -200,7 +176,7 @@ public interface AclInterface {
      * @param strict
      * @return
      */
-    boolean isAllowed(RoleInterface role, RoleInterface resource, String action, boolean strict);
+    boolean isAllowed(RoleInterface role, ResourceInterface resource, String action, boolean strict) throws AclException;
 
     //
     //	HELPER
@@ -209,5 +185,5 @@ public interface AclInterface {
     /**
      * clear complete acl store with all roles, resources and entries
      */
-    void truncateAll();
+    void truncateAll() throws AclException;
 }

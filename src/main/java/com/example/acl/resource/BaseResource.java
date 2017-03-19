@@ -6,9 +6,17 @@ package com.example.acl.resource;
 public class BaseResource implements ResourceInterface {
     private String resourceId;
 
+    public BaseResource() {
+
+    }
+
+    public BaseResource(String resourceId) {
+        this.resourceId = resourceId;
+    }
+
     @Override
     public String getResourceId() {
-        return null;
+        return resourceId;
     }
 
     public void setResourceId(String resourceId) {

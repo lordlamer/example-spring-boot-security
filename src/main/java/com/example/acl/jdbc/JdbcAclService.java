@@ -3,14 +3,13 @@ package com.example.acl.jdbc;
 import com.example.acl.AclException;
 import com.example.acl.AclInterface;
 import com.example.acl.resource.ResourceInterface;
+import com.example.acl.role.BaseRole;
 import com.example.acl.role.RoleInterface;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
-import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,10 +23,13 @@ public class JdbcAclService implements AclInterface {
     private String quoteString;
 
     public JdbcAclService(DataSource dataSource) throws SQLException {
+        // our datasource
         this.dataSource = dataSource;
 
+        // create our jdbcTemplate
         jdbcTemplate = new JdbcTemplate(dataSource);
 
+        // get quote string from db driver
         quoteString = dataSource.getConnection().getMetaData().getIdentifierQuoteString();
     }
 
@@ -52,7 +54,7 @@ public class JdbcAclService implements AclInterface {
     public boolean hasRole(RoleInterface role) {
 
         try {
-            jdbcTemplate.queryForObject("SELECT id FROM acl_role WHERE `role`=?", Long.class, role.getRoleId());
+            jdbcTemplate.queryForObject("SELECT id FROM acl_role WHERE " + quote("role") + "=?", Long.class, role.getRoleId());
         } catch(EmptyResultDataAccessException e) {
             return false;
         }
@@ -91,7 +93,7 @@ public class JdbcAclService implements AclInterface {
 
         // create role entry
         try {
-            jdbcTemplate.update("INSERT INTO acl_role (`role`) VALUES (?)", new Object[]{role.getRoleId()});
+            jdbcTemplate.update("INSERT INTO acl_role (" + quote("role") + ") VALUES (?)", new Object[]{role.getRoleId()});
         } catch (Exception e) {
             throw new AclException("Could not create role: " + role.getRoleId());
         }
@@ -99,7 +101,7 @@ public class JdbcAclService implements AclInterface {
         // create membership roles
         for(RoleInterface parentRole : parents) {
             try {
-                jdbcTemplate.update("INSERT INTO acl_role_parent (`role`, `role_parent`) VALUES (?, ?)", new Object[]{role.getRoleId(), parentRole.getRoleId()});
+                jdbcTemplate.update("INSERT INTO acl_role_parent (" + quote("role") + ", role_parent) VALUES (?, ?)", new Object[]{role.getRoleId(), parentRole.getRoleId()});
             } catch (Exception e) {
                 throw new AclException("Could not create role parent: " + role.getRoleId());
             }
@@ -136,14 +138,14 @@ public class JdbcAclService implements AclInterface {
 
         // remove parent role
         try {
-            jdbcTemplate.update("DELETE FROM acl_role_parent WHERE `role_parent`=? OR `role`=?", new Object[]{role.getRoleId(), role.getRoleId()});
+            jdbcTemplate.update("DELETE FROM acl_role_parent WHERE role_parent=? OR " + quote("role") + "=?", new Object[]{role.getRoleId(), role.getRoleId()});
         } catch (Exception e) {
             throw new AclException("Could not delete role parent: " + role.getRoleId());
         }
 
         // delete role
         try {
-            jdbcTemplate.update("DELETE FROM acl_role WHERE `role`=?", new Object[]{role.getRoleId(), role.getRoleId()});
+            jdbcTemplate.update("DELETE FROM acl_role WHERE " + quote("role") + "=?", new Object[]{role.getRoleId(), role.getRoleId()});
         } catch (Exception e) {
             throw new AclException("Could not delete role: " + role.getRoleId());
         }
@@ -155,33 +157,13 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public List<RoleInterface> getRoles() {
-        List<RoleInterface> roles = new ArrayList<RoleInterface>();
-
-        dataSource.getConnection().getMetaData().getIdentifierQuoteString()
-
-        //jdbcTemplate.queryForList("", )
-        //TODO: mit rowmapper vielleicht implementieren
-
-        return roles;
-    }
-
-    /**
-     * remove all roles
-     */
-    @Override
-    public void removeRoles() {
-        removeRoles(false);
-    }
-
-    /**
-     * remove all roles and all acl entries
-     *
-     * @param removeAcl
-     */
-    @Override
-    public void removeRoles(boolean removeAcl) {
-        //TODO: implementieren
+    public List<RoleInterface> getRoles() throws AclException {
+        try {
+            List<RoleInterface> roles = jdbcTemplate.queryForList("SELECT * FROM acl_role ORDER BY id ASC", RoleInterface.class);
+            return roles;
+        } catch (Exception e) {
+            throw new AclException("Could not get roles: " + e.getMessage());
+        }
     }
 
     /**
@@ -192,7 +174,13 @@ public class JdbcAclService implements AclInterface {
      */
     @Override
     public boolean hasResource(ResourceInterface resource) {
-        return false;
+        try {
+            jdbcTemplate.queryForObject("SELECT id FROM acl_resource WHERE " + quote("resource") + "=?", Long.class, resource.getResourceId());
+        } catch(EmptyResultDataAccessException e) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -201,8 +189,17 @@ public class JdbcAclService implements AclInterface {
      * @param resource
      */
     @Override
-    public void addResource(RoleInterface resource) {
+    public void addResource(ResourceInterface resource) throws AclException {
+        // check if resource already exists
+        if(hasResource(resource))
+            throw new AclException("Resource already exists");
 
+        // create resource entry in table acl_resource
+        try {
+            jdbcTemplate.update("INSERT INTO acl_resource (" + quote("resource") + ") VALUES (?)", new Object[]{resource.getResourceId()});
+        } catch (Exception e) {
+            throw new AclException("Could not create resource: " + resource.getResourceId());
+        }
     }
 
     /**
@@ -211,8 +208,8 @@ public class JdbcAclService implements AclInterface {
      * @param resource
      */
     @Override
-    public void removeResource(RoleInterface resource) {
-
+    public void removeResource(ResourceInterface resource) throws AclException {
+        removeResource(resource, false);
     }
 
     /**
@@ -222,8 +219,20 @@ public class JdbcAclService implements AclInterface {
      * @param removeAcl
      */
     @Override
-    public void removeResource(RoleInterface resource, boolean removeAcl) {
+    public void removeResource(ResourceInterface resource, boolean removeAcl) throws AclException {
+        if(!hasResource(resource))
+            throw new AclException("Resource does not exist: " + resource.getResourceId());
 
+        // remove existing acl entries
+        if(removeAcl)
+            clearByResource(resource);
+
+        // delete role
+        try {
+            jdbcTemplate.update("DELETE FROM acl_resource WHERE " + quote("resource") + "=?", new Object[]{resource.getResourceId()});
+        } catch (Exception e) {
+            throw new AclException("Could not delete resource: " + resource.getResourceId());
+        }
     }
 
     /**
@@ -232,26 +241,13 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public List<RoleInterface> getResources() {
-        return null;
-    }
-
-    /**
-     * remove all resources
-     */
-    @Override
-    public void removeResources() {
-
-    }
-
-    /**
-     * remove all resources and all acl entries
-     *
-     * @param removeAcl
-     */
-    @Override
-    public void removeResources(boolean removeAcl) {
-
+    public List<ResourceInterface> getResources() throws AclException {
+        try {
+            List<ResourceInterface> resources = jdbcTemplate.queryForList("SELECT * FROM acl_resource ORDER BY id ASC", ResourceInterface.class);
+            return resources;
+        } catch (Exception e) {
+            throw new AclException("Could not get resources: " + e.getMessage());
+        }
     }
 
     /**
@@ -260,8 +256,15 @@ public class JdbcAclService implements AclInterface {
      * @param role
      */
     @Override
-    public void clearByRole(RoleInterface role) {
+    public void clearByRole(RoleInterface role) throws AclException {
+        if(!hasRole(role))
+            throw new AclException("Role does not exist: " + role.getRoleId());
 
+        try {
+            jdbcTemplate.update("DELETE FROM " + quote("acl") + " WHERE " + quote("role") + "=?", new Object[]{role.getRoleId()});
+        } catch (Exception e) {
+            throw new AclException("Could not delete acl entries for role: " + role.getRoleId());
+        }
     }
 
     /**
@@ -270,8 +273,15 @@ public class JdbcAclService implements AclInterface {
      * @param resource
      */
     @Override
-    public void clearByResource(RoleInterface resource) {
+    public void clearByResource(ResourceInterface resource) throws AclException {
+        if(!hasResource(resource))
+            throw new AclException("Resource does not exist: " + resource.getResourceId());
 
+        try {
+            jdbcTemplate.update("DELETE FROM " + quote("acl") + " WHERE " + quote("resource") + "=?", new Object[]{resource.getResourceId()});
+        } catch (Exception e) {
+            throw new AclException("Could not delete acl entries for resource: " + resource.getResourceId());
+        }
     }
 
     /**
@@ -282,8 +292,18 @@ public class JdbcAclService implements AclInterface {
      * @param action
      */
     @Override
-    public void allow(RoleInterface role, RoleInterface resource, String action) {
+    public void allow(RoleInterface role, ResourceInterface resource, String action) throws AclException {
+        if(!hasRole(role))
+            throw new AclException("Role does not exist: " + role.getRoleId());
 
+        if(!hasResource(resource))
+            throw new AclException("Resource does not exist: " + resource.getResourceId());
+
+        try {
+            jdbcTemplate.update("INSERT IGNORE INTO " + quote("acl") + " ("+quote("role")+", "+quote("resource")+", "+quote("action")+", "+quote("right")+") VALUES (?, ?, ?, 'allow')", new Object[]{role.getRoleId(), role.getRoleId(), resource.getResourceId(), action});
+        } catch (Exception e) {
+            throw new AclException("Could not create allow entry for role: " + role.getRoleId() + " resource: " + resource.getResourceId() + " action: " + action);
+        }
     }
 
     /**
@@ -294,8 +314,18 @@ public class JdbcAclService implements AclInterface {
      * @param action
      */
     @Override
-    public void deny(RoleInterface role, RoleInterface resource, String action) {
+    public void deny(RoleInterface role, ResourceInterface resource, String action) throws AclException {
+        if(!hasRole(role))
+            throw new AclException("Role does not exist: " + role.getRoleId());
 
+        if(!hasResource(resource))
+            throw new AclException("Resource does not exist: " + resource.getResourceId());
+
+        try {
+            jdbcTemplate.update("INSERT IGNORE INTO " + quote("acl") + " ("+quote("role")+", "+quote("resource")+", "+quote("action")+", "+quote("right")+") VALUES (?, ?, ?, 'deny')", new Object[]{role.getRoleId(), role.getRoleId(), resource.getResourceId(), action});
+        } catch (Exception e) {
+            throw new AclException("Could not create deny entry for role: " + role.getRoleId() + " resource: " + resource.getResourceId() + " action: " + action);
+        }
     }
 
     /**
@@ -306,8 +336,18 @@ public class JdbcAclService implements AclInterface {
      * @param action
      */
     @Override
-    public void remove(RoleInterface role, RoleInterface resource, String action) {
+    public void remove(RoleInterface role, ResourceInterface resource, String action) throws AclException {
+        if(!hasRole(role))
+            throw new AclException("Role does not exist: " + role.getRoleId());
 
+        if(!hasResource(resource))
+            throw new AclException("Resource does not exist: " + resource.getResourceId());
+
+        try {
+            jdbcTemplate.update("DELETE FROM " + quote("acl") + " WHERE "+quote("role")+"=? and "+quote("resource")+"=? and "+quote("action")+"=?", new Object[]{role.getRoleId(), role.getRoleId(), resource.getResourceId(), action});
+        } catch (Exception e) {
+            throw new AclException("Could not delete acl entry for role: " + role.getRoleId() + " resource: " + resource.getResourceId() + " action: " + action);
+        }
     }
 
     /**
@@ -319,8 +359,14 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public boolean hasRule(RoleInterface role, RoleInterface resource, String action) {
-        return false;
+    public boolean hasRule(RoleInterface role, ResourceInterface resource, String action) {
+        try {
+            jdbcTemplate.queryForObject("SELECT id FROM " + quote("acl") + " WHERE " + quote("role") + "=? and "+quote("resource")+"=? and "+quote("action")+"=?", Long.class, new Object[]{role.getRoleId(), role.getRoleId(), resource.getResourceId(), action});
+        } catch(EmptyResultDataAccessException e) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -332,8 +378,8 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public boolean isAllowed(RoleInterface role, RoleInterface resource, String action) {
-        return false;
+    public boolean isAllowed(RoleInterface role, ResourceInterface resource, String action) throws AclException {
+        return isAllowed(role, resource, action, false);
     }
 
     /**
@@ -347,15 +393,62 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public boolean isAllowed(RoleInterface role, RoleInterface resource, String action, boolean strict) {
-        return false;
+    public boolean isAllowed(RoleInterface role, ResourceInterface resource, String action, boolean strict) throws AclException {
+        boolean allowed = false;
+
+        if(!hasRole(role))
+            throw new AclException("Role does not exist: " + role.getRoleId());
+
+        if(!hasResource(resource))
+            throw new AclException("Resource does not exist: " + resource.getResourceId());
+
+        try {
+            // check if we found acl for role directly
+            // ein eintrag direkt an einer rolle hat die hoechste prioritaet
+            String accessRight = (String) jdbcTemplate.queryForObject(
+                    "SELECT "+quote("right")+" FROM " + quote("acl") + " WHERE " + quote("role") + "=? and "+quote("resource")+"=? and "+quote("action")+"=?", new Object[]{role.getRoleId(), resource.getResourceId(), action}, String.class);
+
+            // check if we got allow
+            if (accessRight.equals("allow"))
+                return true;
+            else
+                return false;
+        } catch (EmptyResultDataAccessException e) {
+            //throw new AclException(e.getMessage());
+            System.out.println("EX: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // check for strict
+        if(strict)
+            return allowed;
+
+        // we did not found an direct acl entry for role - so lets check parents
+        // ORDER BY id DESC - prio fuer den letzten eintrag ist damit am hoechsten
+        List<String> roles =jdbcTemplate.queryForList("SELECT role_parent FROM acl_role_parent WHERE " + quote("role") + "=? ORDER BY id DESC", new Object[]{role.getRoleId()}, String.class);
+
+        for(String parentRole : roles) {
+            // check acl for parent role
+            if(isAllowed(new BaseRole(parentRole), resource, action))
+                return true;
+        }
+
+        return allowed;
     }
 
     /**
      * clear complete acl store with all roles, resources and entries
      */
     @Override
-    public void truncateAll() {
-
+    public void truncateAll() throws AclException {
+        // delete role
+        try {
+            jdbcTemplate.update("TRUNCATE TABLE " + quote("acl"));
+            jdbcTemplate.update("TRUNCATE TABLE " + quote("acl_resource"));
+            jdbcTemplate.update("TRUNCATE TABLE " + quote("acl_role"));
+            jdbcTemplate.update("TRUNCATE TABLE " + quote("acl_role_parent"));
+        } catch (Exception e) {
+            throw new AclException("Could not truncate acl database");
+        }
     }
 }

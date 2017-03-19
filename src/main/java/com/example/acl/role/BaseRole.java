@@ -6,9 +6,17 @@ package com.example.acl.role;
 public class BaseRole implements RoleInterface {
     private String roleId;
 
+    public BaseRole() {
+
+    }
+
+    public BaseRole(String roleId) {
+        this.roleId = roleId;
+    }
+
     @Override
     public String getRoleId() {
-        return null;
+        return this.roleId;
     }
 
     public void setRoleId(String roleId) {

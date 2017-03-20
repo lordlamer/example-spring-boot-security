@@ -1,6 +1,8 @@
 package com.example.acl;
 
+import com.example.acl.resource.BaseResource;
 import com.example.acl.resource.ResourceInterface;
+import com.example.acl.role.BaseRole;
 import com.example.acl.role.RoleInterface;
 
 import java.util.List;
@@ -34,7 +36,7 @@ public interface AclInterface {
      * @param role
      * @param parents
      */
-    void addRole(RoleInterface role, List<RoleInterface> parents) throws AclException;
+    void addRole(RoleInterface role, List<BaseRole> parents) throws AclException;
 
     /**
      * remove role
@@ -58,7 +60,7 @@ public interface AclInterface {
      *
      * @return
      */
-    List<RoleInterface> getRoles() throws AclException;
+    List<BaseRole> getRoles() throws AclException;
 
     //
     //	RESOURCE HANDLING
@@ -99,7 +101,7 @@ public interface AclInterface {
      *
      * @return
      */
-    List<ResourceInterface> getResources() throws AclException;
+    List<BaseResource> getResources() throws AclException;
 
     //
     //	PERMISSIONS

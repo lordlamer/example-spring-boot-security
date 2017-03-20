@@ -2,13 +2,16 @@ package com.example.acl.jdbc;
 
 import com.example.acl.AclException;
 import com.example.acl.AclInterface;
+import com.example.acl.resource.BaseResource;
 import com.example.acl.resource.ResourceInterface;
 import com.example.acl.role.BaseRole;
 import com.example.acl.role.RoleInterface;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
 import javax.sql.DataSource;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -79,16 +82,18 @@ public class JdbcAclService implements AclInterface {
      * @param parents
      */
     @Override
-    public void addRole(RoleInterface role, List<RoleInterface> parents) throws AclException {
+    public void addRole(RoleInterface role, List<BaseRole> parents) throws AclException {
         // check if role already exists
         if(hasRole(role))
             throw new AclException("Role already exists: " + role.getRoleId());
 
         // check if parent roles exists
-        for(RoleInterface parentRole : parents) {
-            // check if role already exists
-            if(hasRole(parentRole))
-                throw new AclException("Role already exists: " + parentRole.getRoleId());
+        if(parents != null) {
+            for (RoleInterface parentRole : parents) {
+                // check if role already exists
+                if (!hasRole(parentRole))
+                    throw new AclException("Role does not exists: " + parentRole.getRoleId());
+            }
         }
 
         // create role entry
@@ -99,11 +104,13 @@ public class JdbcAclService implements AclInterface {
         }
 
         // create membership roles
-        for(RoleInterface parentRole : parents) {
-            try {
-                jdbcTemplate.update("INSERT INTO acl_role_parent (" + quote("role") + ", role_parent) VALUES (?, ?)", new Object[]{role.getRoleId(), parentRole.getRoleId()});
-            } catch (Exception e) {
-                throw new AclException("Could not create role parent: " + role.getRoleId());
+        if(parents != null) {
+            for (RoleInterface parentRole : parents) {
+                try {
+                    jdbcTemplate.update("INSERT INTO acl_role_parent (" + quote("role") + ", role_parent) VALUES (?, ?)", new Object[]{role.getRoleId(), parentRole.getRoleId()});
+                } catch (Exception e) {
+                    throw new AclException("Could not create role parent: " + role.getRoleId());
+                }
             }
         }
     }
@@ -145,7 +152,7 @@ public class JdbcAclService implements AclInterface {
 
         // delete role
         try {
-            jdbcTemplate.update("DELETE FROM acl_role WHERE " + quote("role") + "=?", new Object[]{role.getRoleId(), role.getRoleId()});
+            jdbcTemplate.update("DELETE FROM acl_role WHERE " + quote("role") + "=?", new Object[]{role.getRoleId()});
         } catch (Exception e) {
             throw new AclException("Could not delete role: " + role.getRoleId());
         }
@@ -157,9 +164,18 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public List<RoleInterface> getRoles() throws AclException {
+    public List<BaseRole> getRoles() throws AclException {
         try {
-            List<RoleInterface> roles = jdbcTemplate.queryForList("SELECT * FROM acl_role ORDER BY id ASC", RoleInterface.class);
+            List<BaseRole> roles = jdbcTemplate.query("SELECT * FROM acl_role ORDER BY id ASC", new RowMapper<BaseRole>(){
+                public BaseRole mapRow(ResultSet rs, int rowNum)
+                        throws SQLException {
+                    BaseRole role = new BaseRole();
+                    role.setRoleId(rs.getString("role"));
+
+                    return role;
+                }
+            });
+
             return roles;
         } catch (Exception e) {
             throw new AclException("Could not get roles: " + e.getMessage());
@@ -241,9 +257,18 @@ public class JdbcAclService implements AclInterface {
      * @return
      */
     @Override
-    public List<ResourceInterface> getResources() throws AclException {
+    public List<BaseResource> getResources() throws AclException {
         try {
-            List<ResourceInterface> resources = jdbcTemplate.queryForList("SELECT * FROM acl_resource ORDER BY id ASC", ResourceInterface.class);
+            //List<BaseResource> resources = jdbcTemplate.queryForList("SELECT " + quote("resource") + " FROM acl_resource ORDER BY id ASC", BaseResource.class);
+            List<BaseResource> resources = jdbcTemplate.query("SELECT " + quote("resource") + " FROM acl_resource ORDER BY id ASC", new RowMapper<BaseResource>(){
+                public BaseResource mapRow(ResultSet rs, int rowNum)
+                        throws SQLException {
+                    BaseResource resource = new BaseResource();
+                    resource.setResourceId(rs.getString("resource"));
+
+                    return resource;
+                }
+            });
             return resources;
         } catch (Exception e) {
             throw new AclException("Could not get resources: " + e.getMessage());
